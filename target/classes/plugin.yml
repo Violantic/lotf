@@ -1,0 +1,4 @@
+name: LOTF
+version: 1.0
+main: me.borawski.lotf.Minigame
+description: custom minigame
