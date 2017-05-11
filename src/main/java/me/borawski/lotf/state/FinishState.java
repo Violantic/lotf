@@ -17,15 +17,30 @@ import org.bukkit.entity.Player;
  */
 public class FinishState implements GameState {
 
+    /**
+     * Instance
+     */
     private Minigame instance;
 
+    /**
+     * const
+     * @param instance
+     */
     public FinishState(Minigame instance) {
         this.instance = instance;
     }
 
+    /**
+     * Instance
+     * @return
+     */
     public Minigame getInstance() {
         return instance;
     }
+
+    /**
+     * Variables
+     */
 
     public String getId() {
         return "finish";
@@ -35,6 +50,9 @@ public class FinishState implements GameState {
         return "Game is over";
     }
 
+    /**
+     * Teleport players to pig(slaughter) house
+     */
     public void onStart() {
         for(Player player : Bukkit.getOnlinePlayers()) {
             Location location = LocationUtil.getLocation("world", getInstance().getConfig().getString("spawn"));
@@ -42,41 +60,60 @@ public class FinishState implements GameState {
         }
     }
 
+    /**
+     * Kick all players, stop server and let instance system do its magic ;)
+     */
     public void onFinish() {
-        getInstance().getServer().getScheduler().runTaskAsynchronously(getInstance(), new Runnable() {
-            public void run() {
-                for(Entity entity : Bukkit.getWorld("world").getEntities()) {
-                    entity.remove();
-                }
-            }
-        });
-
         for(Player player : Bukkit.getOnlinePlayers()) {
             player.kickPlayer("Re-Log to play again!");
         }
         getInstance().getServer().dispatchCommand(Bukkit.getConsoleSender(), "stop");
     }
 
+    /**
+     * Players can move
+     * @return
+     */
     public boolean canMove() {
         return true;
     }
 
+    /**
+     * Players can't edit blocks
+     * @return
+     */
     public boolean canAlterTerrain() {
         return false;
     }
 
+    /**
+     * Players can't PVP
+     * @return
+     */
     public boolean canPvP() {
         return false;
     }
 
+    /**
+     * Players can't PVE
+     * @return
+     */
     public boolean canPvE() {
         return false;
     }
 
+    /**
+     * Players can talk
+     * @return
+     */
     public boolean canTalk() {
         return true;
     }
 
+    /**
+     * 20 seconds
+     * @return
+     */
     public int getLength() {
         return 20;
     }

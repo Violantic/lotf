@@ -4,6 +4,7 @@
 
 package me.borawski.lotf.state;
 
+import me.borawski.lotf.GameHandler;
 import me.borawski.lotf.GameState;
 import me.borawski.lotf.Minigame;
 import me.borawski.lotf.entity.CustomEntities;
@@ -32,18 +33,33 @@ import java.util.*;
  */
 public class PlayState implements GameState {
 
+    /**
+     * Variables
+     */
     private Minigame instance;
     private int pigSpawningTaskID = 0;
     public static int pigsAlive = 0;
     public static List<EvilPig> pigs = new ArrayList<EvilPig>();
 
+    /**
+     * const
+     * @param instance
+     */
     public PlayState(Minigame instance) {
         this.instance = instance;
     }
 
+    /**
+     * Instance
+     * @return
+     */
     public Minigame getInstance() {
         return instance;
     }
+
+    /**
+     * Variables
+     */
 
     public static List<EvilPig> getPigs() {
         return pigs;
@@ -57,6 +73,10 @@ public class PlayState implements GameState {
         return "Kill the pigs! Beware of evil mutations...";
     }
 
+    /**
+     * Notify the players of start.
+     * Handles creation and deletion of custom entity spawning task.
+     */
     public void onStart() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.sendMessage(ChatColor.GREEN + "■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■");
@@ -83,6 +103,7 @@ public class PlayState implements GameState {
                         apply(player);
                     }
                     pigSpawning = true;
+                    getInstance().getPerkManager().startCycle();
                 } else if(pigSpawning){
                     for (int i = 0; i < 9; i++) {
                         if (pigsAlive >= 14) {
@@ -92,7 +113,12 @@ public class PlayState implements GameState {
                         // Spawn Pig. //
                         Random r = new Random();
                         float chance = r.nextFloat();
-                        if (chance <= evilChance) {
+                        if (chance <= 0.05) {
+                            EvilPig pig = new EvilPig(location.getWorld());
+                            pig.setCustomName(ChatColor.RED + "" + ChatColor.BOLD + "BEAST");
+                            CustomEntities.spawnEntity(pig, location);
+                            pigs.add(pig);
+                        } else if (chance <= evilChance) {
                             EvilPig pig = new EvilPig(location.getWorld());
                             pig.setCustomName(ChatColor.GREEN + "" + ChatColor.BOLD + "BACON");
                             CustomEntities.spawnEntity(pig, location);
@@ -118,6 +144,9 @@ public class PlayState implements GameState {
         pigSpawningTaskID = task.getTaskId();
     }
 
+    /**
+     * Handles deletion of pig spawning task, also displays the end results.
+     */
     public void onFinish() {
         getInstance().getServer().getScheduler().cancelTask(pigSpawningTaskID);
 
@@ -129,17 +158,14 @@ public class PlayState implements GameState {
             }
         });
 
-        UUID winner = null;
-        UUID second = null;
-        UUID third = null;
-        for (Map.Entry<UUID, Integer> player : getInstance().getHandler().getScore().entrySet()) {
-            if (winner == null || (player.getValue() >= getInstance().getHandler().getScore().get(winner))) {
-                winner = player.getKey();
-            } else if (second == null || (player.getValue() > getInstance().getHandler().getScore().get(second)) && (player.getKey() != winner)) {
-                second = player.getKey();
-            } else if (third == null || (player.getValue() > getInstance().getHandler().getScore().get(third))) {
-                third = player.getKey();
-            }
+        UUID winner = null,second=null,third = null;
+
+        try {
+            winner = getInstance().getHandler().getTopThree().get(0);
+            second = getInstance().getHandler().getTopThree().get(1);
+            third = getInstance().getHandler().getTopThree().get(2);
+        } catch (Exception e) {
+
         }
 
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -149,39 +175,73 @@ public class PlayState implements GameState {
             ChatUtil.sendCenteredMessage(player, ChatColor.AQUA + "" + "#1 " + (winner==null?"N/A":Bukkit.getPlayer(winner).getName() + ChatColor.GRAY + " with " + getScore(winner) + " points"));
             ChatUtil.sendCenteredMessage(player, ChatColor.GREEN + "" + "#2 " + (second==null?"N/A":Bukkit.getPlayer(second).getName() + ChatColor.GRAY + " with " + getScore(second) + " points"));
             ChatUtil.sendCenteredMessage(player, ChatColor.GRAY + "" + "#3 " + (third==null?"N/A":Bukkit.getPlayer(third).getName() + ChatColor.GRAY + " with " + getScore(second) + " points"));
-            ChatUtil.sendCenteredMessage(player, ChatColor.GRAY + "(Server restarting in 15 seconds)");
+            ChatUtil.sendCenteredMessage(player, ChatColor.GRAY + "(Server restarting in 20 seconds)");
             player.sendMessage(ChatColor.GREEN + "■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■");
         }
     }
 
+    /**
+     * Score
+     * @param uuid
+     * @return
+     */
     public int getScore(UUID uuid) {
         return getInstance().getHandler().getScore().get(uuid);
     }
 
+    /**
+     * Player can move
+     * @return
+     */
     public boolean canMove() {
         return true;
     }
 
+    /**
+     * Player can't edit blocks
+     * @return
+     */
     public boolean canAlterTerrain() {
         return false;
     }
 
+    /**
+     * Players can't PVP
+     * @return
+     */
     public boolean canPvP() {
         return false;
     }
 
+    /**
+     * Players can't PVE
+     * @return
+     */
     public boolean canPvE() {
         return true;
     }
 
+    /**
+     * Players can talk
+     * @return
+     */
     public boolean canTalk() {
         return true;
     }
 
+    /**
+     * 1.5 Minutes
+     * @return
+     */
     public int getLength() {
         return 90;
     }
 
+    /**
+     * Handles setting players initial scoreboard, and has a runnable in which
+     * updates the side display slot async
+     * @param player
+     */
     public static void apply(final Player player) {
         ScoreboardManager scoreboardManager = Bukkit.getScoreboardManager();
         org.bukkit.scoreboard.Scoreboard scoreboard = scoreboardManager.getNewScoreboard();
@@ -189,13 +249,6 @@ public class PlayState implements GameState {
 
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-        final org.bukkit.scoreboard.Team team = scoreboard.registerNewTeam("team1");
-        final org.bukkit.scoreboard.Team team2 = scoreboard.registerNewTeam("team2");
-        final org.bukkit.scoreboard.Team team3 = scoreboard.registerNewTeam("team3");
-        final org.bukkit.scoreboard.Team team4 = scoreboard.registerNewTeam("team4");
-        final org.bukkit.scoreboard.Team team5 = scoreboard.registerNewTeam("team5");
-        final org.bukkit.scoreboard.Team team6 = scoreboard.registerNewTeam("team6");
-        final org.bukkit.scoreboard.Team team7 = scoreboard.registerNewTeam("team7");
         final org.bukkit.scoreboard.Team team8 = scoreboard.registerNewTeam("team8");
         final org.bukkit.scoreboard.Team team9 = scoreboard.registerNewTeam("team9");
         final org.bukkit.scoreboard.Team team10 = scoreboard.registerNewTeam("team10");
@@ -203,14 +256,6 @@ public class PlayState implements GameState {
         final org.bukkit.scoreboard.Team team12 = scoreboard.registerNewTeam("team12");
         final org.bukkit.scoreboard.Team team13 = scoreboard.registerNewTeam("team13");
 
-
-        team.addPlayer(Bukkit.getOfflinePlayer(ChatColor.AQUA.toString()));
-        team2.addPlayer(Bukkit.getOfflinePlayer(ChatColor.STRIKETHROUGH.toString()));
-        team3.addPlayer(Bukkit.getOfflinePlayer(ChatColor.BLACK.toString()));
-        team4.addPlayer(Bukkit.getOfflinePlayer(ChatColor.BLUE.toString()));
-        team5.addPlayer(Bukkit.getOfflinePlayer(ChatColor.DARK_AQUA.toString()));
-        team6.addPlayer(Bukkit.getOfflinePlayer(ChatColor.DARK_PURPLE.toString()));
-        team7.addPlayer(Bukkit.getOfflinePlayer(ChatColor.DARK_GREEN.toString()));
         team8.addPlayer(Bukkit.getOfflinePlayer(ChatColor.DARK_BLUE.toString()));
         team9.addPlayer(Bukkit.getOfflinePlayer(ChatColor.DARK_GRAY.toString()));
         team10.addPlayer(Bukkit.getOfflinePlayer(ChatColor.RED.toString()));
@@ -218,13 +263,6 @@ public class PlayState implements GameState {
         team12.addPlayer(Bukkit.getOfflinePlayer(ChatColor.GREEN.toString()));
         team13.addPlayer(Bukkit.getOfflinePlayer(ChatColor.GOLD.toString()));
 
-        objective.getScore(ChatColor.AQUA.toString()).setScore(13);
-        objective.getScore(ChatColor.STRIKETHROUGH.toString()).setScore(12);
-        objective.getScore(ChatColor.BLACK.toString()).setScore(11);
-        objective.getScore(ChatColor.BLUE.toString()).setScore(10);
-        objective.getScore(ChatColor.DARK_AQUA.toString()).setScore(9);
-        objective.getScore(ChatColor.DARK_PURPLE.toString()).setScore(8);
-        objective.getScore(ChatColor.DARK_GREEN.toString()).setScore(7);
         objective.getScore(ChatColor.DARK_BLUE.toString()).setScore(6);
         objective.getScore(ChatColor.DARK_GRAY.toString()).setScore(5);
         objective.getScore(ChatColor.RED.toString()).setScore(4);
@@ -237,18 +275,7 @@ public class PlayState implements GameState {
                     cancel();
                     return;
                 }
-
-                UUID first, second, third;
-                first = Minigame.getInstance().getHandler().getTopThree().get(0);
-                second = Minigame.getInstance().getHandler().getTopThree().get(1);
-                third = Minigame.getInstance().getHandler().getTopThree().get(2);
-
-                String one = first != null ? Bukkit.getPlayer(first).getName().substring(0, 8) : "N/A";
-                String two = second != null ? Bukkit.getPlayer(second).getName().substring(0, 8) : "N/A";
-                String three = third != null ? Bukkit.getPlayer(third).getName().substring(0, 8) : "N/A";
-
                 int you = Minigame.getInstance().getHandler().getScore().get(player.getUniqueId());
-
                 int numberOfMinutes, numberOfSeconds;
                 numberOfMinutes = (((90-Minigame.getInstance().getHandler().getSecond()) % 86400) % 3600) / 60;
                 numberOfSeconds = (((90-Minigame.getInstance().getHandler().getSecond()) % 86400) % 3600) % 60;
@@ -256,13 +283,6 @@ public class PlayState implements GameState {
                 final String minutes = ((numberOfMinutes < 10) ? ("0" + numberOfMinutes) + ":" : numberOfMinutes + ":") + seconds;
 
                 objective.setDisplayName(ChatColor.RED + "" + ChatColor.BOLD + "• LOTF •");
-                team.setPrefix(ChatColor.GRAY + "");
-                team2.setPrefix("§b§lFirst Place");
-                team3.setPrefix(ChatColor.AQUA + "► " + one);
-                team4.setPrefix("§a§lSecond Place");
-                team5.setPrefix(ChatColor.GREEN + "► " + two);
-                team6.setPrefix("§7§lThird Place");
-                team7.setPrefix(ChatColor.GRAY + "► " + three);
                 team8.setPrefix("§a§lYour Score");
                 team9.setPrefix(ChatColor.RED + "► " + you);
                 team10.setPrefix("§a§lPlayers");
@@ -270,7 +290,7 @@ public class PlayState implements GameState {
                 team12.setPrefix("§a§lTime Left");
                 team13.setPrefix(ChatColor.RED + "► " + minutes);
             }
-        }.runTaskTimer(Minigame.getInstance(), 0L, 20L);
+        }.runTaskTimerAsynchronously(Minigame.getInstance(), 0L, 20L);
 
         player.setScoreboard(scoreboard);
     }

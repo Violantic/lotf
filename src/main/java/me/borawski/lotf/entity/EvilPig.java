@@ -17,6 +17,14 @@ import java.util.Set;
  */
 public class EvilPig extends EntityPig {
 
+    /**
+     * Constructor.
+     * Gives custom pathfinder goals to make pigs
+     *      1.) Super fast
+     *      2.) Panic more easily
+     *      3.) Want to randomly stroll more
+     * @param world
+     */
     public EvilPig(org.bukkit.World world) {
         super(((CraftWorld)world).getHandle());
         Set goalB = (Set)getPrivateField("b", PathfinderGoalSelector.class, goalSelector); goalB.clear();
@@ -26,12 +34,18 @@ public class EvilPig extends EntityPig {
 
         this.goalSelector.a(0, new PathfinderGoalFloat(this));
         this.goalSelector.a(1, new PathfinderGoalPanic(this, 2.0D));
-        this.goalSelector.a(5, new PathfinderGoalMoveTowardsRestriction(this, 1.0D));
         this.goalSelector.a(6, new PathfinderGoalRandomStrollLand(this, 3.0D));
         this.goalSelector.a(8, new PathfinderGoalLookAtPlayer(this, EntityHuman.class, 8.0F));
         this.goalSelector.a(8, new PathfinderGoalRandomLookaround(this));
     }
 
+    /**
+     * Reflection to get private pathfinder goals/targets from the pathfinder class
+     * @param fieldName
+     * @param clazz
+     * @param object
+     * @return
+     */
     public static Object getPrivateField(String fieldName, Class clazz, Object object) {
         Field field;
         Object o = null;
