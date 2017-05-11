@@ -36,7 +36,7 @@ public class InstaPerk implements Perk {
                 GameHandler.instaKill.remove(player.getUniqueId());
                 BarUtil.sendActionBar(player, ChatColor.YELLOW + "" + ChatColor.BOLD + "YOUR INSTAKILL HAS RUN OUT!");
             }
-        }.runTaskLater(Minigame.getInstance(), 20L*8L);
+        }.runTaskLater(Minigame.getInstance(), 20L*5L);
     }
 
 }
